@@ -5,16 +5,18 @@ import os
 import tempfile
 import httpx
 from typing import Optional
+import base64
 
 
 @register("music_sjyy", "知鱼", "随机音乐", "1.0")
 class MyPlugin(Star):
     def __init__(self, context: Context):
         super().__init__(context)
-        self.api_url = "http://api.ocoa.cn/api/sjyy.php"  
+       
+        encoded_url = "aHR0cDovL2FwaS5vY29hLmNuL2FwaS9zanl5LnBocA=="
+        self.api_url = base64.b64decode(encoded_url).decode('utf-8')
 
     async def _fetch_random_voice(self) -> Optional[str]:
-
         try:
             async with httpx.AsyncClient(timeout=10.0) as client:
                 response = await client.get(self.api_url)
@@ -34,25 +36,19 @@ class MyPlugin(Star):
 
     @filter.regex(r".*随机音乐.*") 
     async def wsde_handler(self, message: AstrMessageEvent):
-        
         try:
             voice_path = await self._fetch_random_voice()
             if not voice_path:
-                yield message.plain_result("获取语音失败，请稍后再试。")
+                yield message.plain_result("获取语音失败 请重试")
                 return
-
-            
 
             async for msg in self.send_voice_message(message, voice_path):
                 yield msg
-
-          
 
         except Exception as e:
             yield message.plain_result(f"播放语音时出错：{str(e)}")
 
     async def send_voice_message(self, event: AstrMessageEvent, voice_file_path: str):
-    
         try:
             chain = [Record.fromFileSystem(voice_file_path)]
             yield event.chain_result(chain)
