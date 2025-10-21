@@ -16,11 +16,10 @@ class AvatarInterpreterPlugin(Star):
             yield event.plain_result("无法获取您的QQ号")
             return
 
-        # 先回复提示
         yield event.plain_result("头像解读中...")
 
-        # 使用与 OriginiumSeal 插件一致的头像链接格式
-        avatar_url = f"https://q1.qlogo.cn/g?b=qq&nk={sender_id}&s=640"
+        # ✅ 使用你指定的、经过验证的头像链接格式
+        avatar_url = f"http://q.qlogo.cn/headimg_dl?dst_uin={sender_id}&spec=640&img_type=jpg"
 
         api_url = (
             "https://missqiu.icu/API/aitl.php"
