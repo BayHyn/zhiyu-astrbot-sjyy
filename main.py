@@ -19,7 +19,7 @@ class AvatarInterpreterPlugin(Star):
         yield event.plain_result("头像解读中...")
 
         # ✅ 使用你指定的、经过验证的头像链接格式
-        avatar_url = f"http://q.qlogo.cn/headimg_dl?dst_uin={sender_id}&spec=640&img_type=jpg"
+        avatar_url = f"http://api.ocoa.cn/api/qqtx.php?qq={sender_id}"
 
         api_url = (
             "https://missqiu.icu/API/aitl.php"
