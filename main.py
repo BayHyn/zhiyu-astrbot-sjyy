@@ -12,8 +12,8 @@ class AvatarInterpreterPlugin(Star):
         if msg != "解读头像":
             return
 
-        user_id = event.sender.sender_id
-        if not user_id:
+        sender_id = event.sender.sender_id
+        if not sender_id:
             yield event.chain_result([Plain(text="❌ 无法获取您的 QQ 号。")])
             return
 
@@ -21,7 +21,7 @@ class AvatarInterpreterPlugin(Star):
         yield event.chain_result([Plain(text="头像解读中...")])
 
         # 构造头像链接
-        avatar_url = f"http://q.qlogo.cn/headimg_dl?dst_uin={user_id}&spec=640&img_type=jpg"
+        avatar_url = f"http://q.qlogo.cn/headimg_dl?dst_uin={sender_id}&spec=640&img_type=jpg"
 
         # 构造 AI 接口 URL
         api_url = (
