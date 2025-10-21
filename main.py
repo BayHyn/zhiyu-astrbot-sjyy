@@ -1,25 +1,26 @@
 import aiohttp
-from astrbot.api.all import *
+from astrbot.api import logger
+from astrbot.api.event import filter, AstrMessageEvent
+from astrbot.api.star import Context, Star, register
+
 
 @register("avatar_interpreter", "解读头像", "AI解读用户头像", "1.0")
 class AvatarInterpreterPlugin(Star):
     def __init__(self, context: Context):
         super().__init__(context)
-    
-    @event_message_type(EventMessageType.GROUP_MESSAGE)
-    async def on_group_message(self, event: AstrMessageEvent):
-        msg = event.message_str.strip()
-        if msg != "解读头像":
-            return
 
-        sender_id = event.sender_id
+    @filter.command("解读头像")
+    async def interpret_avatar(self, event: AstrMessageEvent):
+        sender_id = event.get_sender_id()
         if not sender_id:
-            yield event.chain_result([Plain(text="无法获取您的QQ号")])
+            yield event.plain_result("无法获取您的QQ号")
             return
 
-        yield event.chain_result([Plain(text="头像解读中...")])
+        # 先回复提示
+        yield event.plain_result("头像解读中...")
 
-        avatar_url = f"http://q.qlogo.cn/headimg_dl?dst_uin={sender_id}&spec=640&img_type=jpg"
+        # 使用与 OriginiumSeal 插件一致的头像链接格式
+        avatar_url = f"https://q1.qlogo.cn/g?b=qq&nk={sender_id}&s=640"
 
         api_url = (
             "https://missqiu.icu/API/aitl.php"
@@ -34,12 +35,12 @@ class AvatarInterpreterPlugin(Star):
                     if response.status == 200:
                         result_text = await response.text()
                         if result_text.strip():
-                            yield event.chain_result([Plain(text=result_text.strip())])
+                            yield event.plain_result(result_text.strip())
                         else:
-                            yield event.chain_result([Plain(text="AI返回内容为空")])
+                            yield event.plain_result("AI返回内容为空")
                     else:
-                        self.context.logger.error(f"AI接口返回状态码: {response.status}")
-                        yield event.chain_result([Plain(text="头像解读失败 请稍后再试")])
+                        logger.error(f"AI接口返回状态码: {response.status}")
+                        yield event.plain_result("头像解读失败 请稍后再试")
         except Exception as e:
-            self.context.logger.error(f"请求AI接口出错: {str(e)}")
-            yield event.chain_result([Plain(text="网络请求异常 请稍后再试")])
+            logger.error(f"请求AI接口出错: {str(e)}")
+            yield event.plain_result("网络请求异常 请稍后再试")
