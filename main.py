@@ -18,8 +18,7 @@ class AvatarInterpreterPlugin(Star):
 
         yield event.plain_result("头像解读中...")
 
-        # ✅ 使用你指定的、经过验证的头像链接格式
-        avatar_url = f"http://api.ocoa.cn/api/qqtx.php?qq={sender_id}"
+        avatar_url = f"http://q.qlogo.cn/headimg_dl?dst_uin={sender_id}&spec=640&img_type=jpg"
 
         api_url = (
             "https://missqiu.icu/API/aitl.php"
@@ -31,15 +30,19 @@ class AvatarInterpreterPlugin(Star):
         try:
             async with aiohttp.ClientSession() as session:
                 async with session.get(api_url) as response:
-                    if response.status == 200:
-                        result_text = await response.text()
-                        if result_text.strip():
-                            yield event.plain_result(result_text.strip())
-                        else:
-                            yield event.plain_result("AI返回内容为空")
-                    else:
-                        logger.error(f"AI接口返回状态码: {response.status}")
+                    if response.status != 200:
+                        logger.error(f"AI接口HTTP状态码: {response.status}")
                         yield event.plain_result("头像解读失败 请稍后再试")
-        except Exception as e:
-            logger.error(f"请求AI接口出错: {str(e)}")
-            yield event.plain_result("网络请求异常 请稍后再试")
+                        return
+
+                    # ✅ 解析 JSON 并提取 content
+                    data = await response.json()
+                    content = data["choices"][0]["message"]["content"]
+                    if content.strip():
+                        yield event.plain_result(content.strip())
+                    else:
+                        yield event.plain_result("AI返回内容为空")
+
+        except (aiohttp.ClientError, ValueError, KeyError, IndexError) as e:
+            logger.error(f"处理AI响应时出错: {str(e)}")
+            yield event.plain_result("解析结果失败 请稍后再试")
