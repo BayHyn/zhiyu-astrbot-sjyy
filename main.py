@@ -1,16 +1,23 @@
+import re
 import aiohttp
 from astrbot.api import logger
 from astrbot.api.event import filter, AstrMessageEvent
 from astrbot.api.star import Context, Star, register
 
 
-@register("avatar_interpreter", "解读头像", "AI解读用户头像", "1.0")
+@register("qq_avatar", "知鱼", "AI解读用户头像", "1.0")
 class AvatarInterpreterPlugin(Star):
     def __init__(self, context: Context):
         super().__init__(context)
+        
+        self.command_pattern = re.compile(r"^(?:/)?解读头像$")
 
-    @filter.command("解读头像")
+    @filter.on_message()
     async def interpret_avatar(self, event: AstrMessageEvent):
+        msg = event.get_message_str().strip()
+        if not self.command_pattern.match(msg):
+            return  
+
         sender_id = event.get_sender_id()
         if not sender_id:
             yield event.plain_result("无法获取您的QQ号")
@@ -35,7 +42,6 @@ class AvatarInterpreterPlugin(Star):
                         yield event.plain_result("头像解读失败 请稍后再试")
                         return
 
-                    # ✅ 解析 JSON 并提取 content
                     data = await response.json()
                     content = data["choices"][0]["message"]["content"]
                     if content.strip():
