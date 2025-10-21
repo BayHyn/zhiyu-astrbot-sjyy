@@ -1,56 +1,54 @@
+import aiohttp
+from urllib.parse import quote
 from astrbot.api.all import *
-from astrbot.api.event import filter, AstrMessageEvent
-import random
-import os
-import tempfile
-import httpx
-from typing import Optional
-import base64
 
+# API 配置
+API_KEY = "c60b5ffa3d6b63056c772584ca1c8acb5369d75a967f14b9f72e03fabc97cb72"
+AI_API_URL = "https://missqiu.icu/API/aitl.php"
+HEADIMG_URL_TEMPLATE = "http://q.qlogo.cn/headimg_dl?dst_uin={user_id}&spec=640&img_type=jpg"
+PROMPT = "解读一下这个头像，不要输出markdown格式，要纯文本返回"
 
-@register("music_sjyy", "知鱼", "随机音乐", "1.0")
-class MyPlugin(Star):
+@register("avatar_interpreter", "解读头像", "AI解读用户头像", "1.0")
+class AvatarInterpreterPlugin(Star):
     def __init__(self, context: Context):
         super().__init__(context)
-       
-        encoded_url = "aHR0cDovL2FwaS5vY29hLmNuL2FwaS9zanl5LnBocA=="
-        self.api_url = base64.b64decode(encoded_url).decode('utf-8')
 
-    async def _fetch_random_voice(self) -> Optional[str]:
+    @event_message_type(EventMessageType.GROUP_MESSAGE)
+    async def on_group_message(self, event: AstrMessageEvent):
+        msg = event.message_str.strip()
+        if msg != "解读头像":
+            return
+
+        user_id = event.sender.user_id  # 获取用户 QQ 号
+        if not user_id:
+            yield event.chain_result([Plain(text="❌ 无法获取您的 QQ 号。")])
+            return
+
+        # 构造头像 URL
+        avatar_url = HEADIMG_URL_TEMPLATE.format(user_id=user_id)
+        
+        # URL 编码（防止特殊字符）
+        encoded_avatar_url = quote(avatar_url, safe='')
+
+        # 构造完整 AI 请求 URL
+        full_url = f"{AI_API_URL}?apikey={API_KEY}&text={quote(PROMPT, safe='')}&url={encoded_avatar_url}"
+
         try:
-            async with httpx.AsyncClient(timeout=10.0) as client:
-                response = await client.get(self.api_url)
-                response.raise_for_status()
-
-                content_type = response.headers.get('content-type', '').lower()
-                if 'audio' not in content_type and 'octet-stream' not in content_type:                    
-                    pass
-             
-                with tempfile.NamedTemporaryFile(delete=False, suffix=".mp3") as tmp_file:
-                    tmp_file.write(response.content)
-                    return tmp_file.name
-
+            async with aiohttp.ClientSession() as session:
+                async with session.get(full_url, timeout=30) as resp:
+                    if resp.status != 200:
+                        text = await resp.text()
+                        self.context.logger.error(f"AI API error ({resp.status}): {text}")
+                        yield event.chain_result([Plain(text="❌ AI 解读失败，请稍后再试。")])
+                        return
+                    result = await resp.text()
+                    # 确保结果非空
+                    if not result.strip():
+                        yield event.chain_result([Plain(text="⚠️ AI 返回内容为空。")])
+                        return
+                    yield event.chain_result([Plain(text=result.strip())])
+        except asyncio.TimeoutError:
+            yield event.chain_result([Plain(text="❌ 请求超时，请稍后再试。")])
         except Exception as e:
-            logger.error(f"获取语音 API 失败: {e}")
-            return None
-
-    @filter.regex(r".*随机音乐.*") 
-    async def wsde_handler(self, message: AstrMessageEvent):
-        try:
-            voice_path = await self._fetch_random_voice()
-            if not voice_path:
-                yield message.plain_result("获取语音失败 请重试")
-                return
-
-            async for msg in self.send_voice_message(message, voice_path):
-                yield msg
-
-        except Exception as e:
-            yield message.plain_result(f"播放语音时出错：{str(e)}")
-
-    async def send_voice_message(self, event: AstrMessageEvent, voice_file_path: str):
-        try:
-            chain = [Record.fromFileSystem(voice_file_path)]
-            yield event.chain_result(chain)
-        except Exception as e:
-            yield event.plain_result(f"发送语音失败：{str(e)}")
+            self.context.logger.error(f"AI request failed: {e}")
+            yield event.chain_result([Plain(text="❌ 网络异常，请稍后再试。")])
