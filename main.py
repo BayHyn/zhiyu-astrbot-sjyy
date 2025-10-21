@@ -12,19 +12,15 @@ class AvatarInterpreterPlugin(Star):
         if msg != "解读头像":
             return
 
-        # ✅ 正确获取 QQ 号：直接使用 event.user_id
         user_id = event.user_id
         if not user_id:
-            yield event.chain_result([Plain(text="❌ 无法获取您的 QQ 号。")])
+            yield event.chain_result([Plain(text="无法获取您的QQ号")])
             return
 
-        # 先发送提示
         yield event.chain_result([Plain(text="头像解读中...")])
 
-        # 构造头像链接
         avatar_url = f"http://q.qlogo.cn/headimg_dl?dst_uin={user_id}&spec=640&img_type=jpg"
 
-        # 构造 AI 接口 URL
         api_url = (
             "https://missqiu.icu/API/aitl.php"
             "?apikey=c60b5ffa3d6b63056c772584ca1c8acb5369d75a967f14b9f72e03fabc97cb72"
@@ -40,10 +36,10 @@ class AvatarInterpreterPlugin(Star):
                         if result_text.strip():
                             yield event.chain_result([Plain(text=result_text.strip())])
                         else:
-                            yield event.chain_result([Plain(text="⚠️ AI 返回内容为空。")])
+                            yield event.chain_result([Plain(text="AI返回内容为空")])
                     else:
                         self.context.logger.error(f"AI接口返回状态码: {response.status}")
-                        yield event.chain_result([Plain(text="❌ 头像解读失败，请稍后再试。")])
+                        yield event.chain_result([Plain(text="头像解读失败 请稍后再试")])
         except Exception as e:
             self.context.logger.error(f"请求AI接口出错: {str(e)}")
-            yield event.chain_result([Plain(text="❌ 网络异常，请稍后再试。")])
+            yield event.chain_result([Plain(text="网络请求异常 请稍后再试")])
