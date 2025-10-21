@@ -12,14 +12,14 @@ class AvatarInterpreterPlugin(Star):
         if msg != "解读头像":
             return
 
-        user_id = event.user_id
-        if not user_id:
+        sender_id = event.sender_id
+        if not sender_id:
             yield event.chain_result([Plain(text="无法获取您的QQ号")])
             return
 
         yield event.chain_result([Plain(text="头像解读中...")])
 
-        avatar_url = f"http://q.qlogo.cn/headimg_dl?dst_uin={user_id}&spec=640&img_type=jpg"
+        avatar_url = f"http://q.qlogo.cn/headimg_dl?dst_uin={sender_id}&spec=640&img_type=jpg"
 
         api_url = (
             "https://missqiu.icu/API/aitl.php"
