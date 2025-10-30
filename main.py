@@ -14,18 +14,25 @@ class MyPlugin(Star):
         self.api_url = "http://api.ocoa.cn/api/sjyy.php"  
 
     async def _fetch_random_voice(self) -> Optional[str]:
-
         try:
             async with httpx.AsyncClient(timeout=10.0) as client:
                 response = await client.get(self.api_url)
                 response.raise_for_status()
 
-                content_type = response.headers.get('content-type', '').lower()
-                if 'audio' not in content_type and 'octet-stream' not in content_type:                    
-                    pass
-             
+                # 解析 JSON，提取 url 字段
+                data = response.json()
+                audio_url = data.get("url")
+                if not audio_url:
+                    logger.error("返回的 JSON 中没有 url 字段")
+                    return None
+
+                # 请求音频链接
+                audio_response = await client.get(audio_url)
+                audio_response.raise_for_status()
+
+                # 保存音频到临时文件
                 with tempfile.NamedTemporaryFile(delete=False, suffix=".mp3") as tmp_file:
-                    tmp_file.write(response.content)
+                    tmp_file.write(audio_response.content)
                     return tmp_file.name
 
         except Exception as e:
@@ -41,18 +48,13 @@ class MyPlugin(Star):
                 yield message.plain_result("获取语音失败，请稍后再试。")
                 return
 
-            
-
             async for msg in self.send_voice_message(message, voice_path):
                 yield msg
-
-          
 
         except Exception as e:
             yield message.plain_result(f"播放语音时出错：{str(e)}")
 
     async def send_voice_message(self, event: AstrMessageEvent, voice_file_path: str):
-    
         try:
             chain = [Record.fromFileSystem(voice_file_path)]
             yield event.chain_result(chain)
