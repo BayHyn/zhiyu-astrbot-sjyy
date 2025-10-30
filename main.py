@@ -16,24 +16,24 @@ class MyPlugin(Star):
     async def _fetch_random_voice(self) -> Optional[str]:
         try:
             async with httpx.AsyncClient(timeout=10.0) as client:
-                # 第一步：请求接口，获取 JSON
+                # 获取 JSON 响应
                 response = await client.get(self.api_url)
                 response.raise_for_status()
-
-                # 解析 JSON，提取 url
+                
+                # 解析 JSON，提取 url 字段
                 data = response.json()
                 audio_url = data.get("url")
                 if not audio_url:
-                    logger.error("返回的 JSON 中没有 url 字段")
+                    logger.error("API 返回的 JSON 中缺少 url 字段")
                     return None
 
-                # 第二步：请求 audio_url 获取音频内容（替换原来直接用 response.content）
-                audio_response = await client.get(audio_url)
-                audio_response.raise_for_status()
+                # 请求音频链接
+                audio_resp = await client.get(audio_url)
+                audio_resp.raise_for_status()
 
-                # 原有逻辑：写入临时文件
+                # 写入临时文件（和你原来写法一致）
                 with tempfile.NamedTemporaryFile(delete=False, suffix=".mp3") as tmp_file:
-                    tmp_file.write(audio_response.content)  # 改为 audio_response.content
+                    tmp_file.write(audio_resp.content)
                     return tmp_file.name
 
         except Exception as e:
