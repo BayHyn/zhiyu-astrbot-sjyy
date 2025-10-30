@@ -38,7 +38,7 @@ class MyPlugin(Star):
         try:
             voice_path = await self._fetch_random_voice()
             if not voice_path:
-                yield message.plain_result("获取语音失败 请稍后再试")
+                yield message.plain_result("获取语音失败，请稍后再试。")
                 return
 
             
